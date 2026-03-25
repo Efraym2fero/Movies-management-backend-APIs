@@ -3,13 +3,6 @@ import bcrypt from "bcryptjs";
 import { prisma } from "../config/db.js";
 import { genToken } from './../utils/genToken.js';
 
-const getDate = async (req,res)=>{
-  const users = await prisma.user.findMany()
-  return res.json({"data":users})
-}
-
-
-
 const register = async (req, res) => {
   try {
     const { name, email, password } = req.body;

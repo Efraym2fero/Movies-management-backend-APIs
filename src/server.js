@@ -15,6 +15,7 @@ const PORT = 3000;
 app.use(express.json())
 app.use(express.urlencoded({extended:true}))
 
+
 app.use("/movies",movieRouter);
 app.use("/auth",authRouter)
 app.use("/watchlist",watchlistRouter)

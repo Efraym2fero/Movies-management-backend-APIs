@@ -2,9 +2,11 @@ import express  from 'express';
 import { register,login, logout } from '../controllers/authController.js';
 import { addUserSchema, loginSchema } from '../validators/userValidators.js';
 import { validateReq } from '../middleware/validatorsMiddleware.js';
+import { authLimiter } from '../middleware/rateLimiting.js';
 
 const authRouter = express.Router()
 
+authRouter.use(authLimiter)
 authRouter.post("/register",validateReq(addUserSchema),register)
 authRouter.post("/login",validateReq(loginSchema),login)
 authRouter.post("/logout",logout)

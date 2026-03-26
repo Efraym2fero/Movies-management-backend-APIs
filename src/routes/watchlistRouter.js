@@ -4,8 +4,11 @@ import { authMiddleware } from "../middleware/authMiddleware.js";
 import { validateQueryReq, validateReq } from "../middleware/validatorsMiddleware.js";
 import { addTOWLSchema, updateWLSchema } from "../validators/watchlistValidators.js";
 import { watchlistLimiter } from "../middleware/rateLimiting.js";
+import helmet from "helmet";
 
 const watchlistRouter = express.Router()
+
+watchlistRouter.use(helmet())
 watchlistRouter.use(watchlistLimiter)
 watchlistRouter.use(authMiddleware)
 watchlistRouter.post("/",validateReq(addTOWLSchema),addToWatchlist)

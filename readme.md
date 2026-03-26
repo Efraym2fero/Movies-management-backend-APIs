@@ -1,6 +1,6 @@
 # 🎬 Movies Management Backend API
 
-A RESTful backend API built with **Node.js**, **Express**, **Prisma ORM**, and **PostgreSQL** for managing movies and personal watchlists with JWT-based authentication.
+A RESTful backend API built with **Node.js**, **Express**, **Prisma ORM**, and **PostgreSQL** for managing a movie catalog and personal watchlists, with JWT authentication, Zod validation, and per-route rate limiting.
 
 ---
 
@@ -16,8 +16,8 @@ A RESTful backend API built with **Node.js**, **Express**, **Prisma ORM**, and *
   - [Installation](#installation)
   - [Environment Variables](#environment-variables)
   - [Database Setup](#database-setup)
-  - [Seeding the Database](#seeding-the-database)
   - [Running the Server](#running-the-server)
+- [Rate Limiting](#rate-limiting)
 - [API Reference](#api-reference)
   - [Auth Routes](#auth-routes)
   - [Movie Routes](#movie-routes)
@@ -25,45 +25,47 @@ A RESTful backend API built with **Node.js**, **Express**, **Prisma ORM**, and *
 - [Authentication](#authentication)
 - [Validation](#validation)
 - [Error Handling](#error-handling)
-- [Contributing](#contributing)
-- [License](#license)
 
 ---
 
 ## 📖 Overview
 
-This API allows users to browse a movie catalog, register accounts, and manage personal watchlists. Each user can add movies to their watchlist, track their watch status, leave ratings and notes, and paginate through results. The project uses Prisma ORM with PostgreSQL for type-safe database access and supports both JWT cookie and Bearer token authentication.
+This API allows users to browse a movie catalog, create accounts, and manage their personal watchlists. Users can add movies to their watchlist, track watch status (`PLANNED`, `WATCHING`, `COMPLETED`, `DROPED`), leave ratings and notes, and paginate through results.
+
+The project uses **Prisma v7** with PostgreSQL for type-safe database access, **Zod v4** for runtime request validation, **express-rate-limit** for brute-force protection, and supports both JWT Bearer token and cookie-based authentication simultaneously.
 
 ---
 
-## Features
+## ✨ Features
 
--  User registration, login, and logout with JWT (cookie + Bearer token support)
--  Browse and filter movies with pagination
--  Personal watchlist management (add, update, delete, list)
--  Watchlist status tracking: `PLANNED`, `WATCHING`, `COMPLETED`, `DROPPED`
--  Movie rating (1–10) and personal notes per watchlist entry
--  Movie filtering by genre, release year, and search term
--  Pagination with `nextURL` / `prevURL` helpers
--  Request validation using Zod schemas
-- 🔒 Password hashing with bcryptjs
--  Protected routes via JWT auth middleware
--  Database seed script for sample movie data
+- 🔐 User registration, login, and logout with JWT (Bearer token + `httpOnly` cookie)
+- ✅ Full request validation on all routes using Zod v4 schemas
+- 🛡️ Per-route rate limiting (auth, movies, watchlist each have separate limits)
+- 🎥 Browse and filter movies with pagination, sorting, and search
+- 📋 Full personal watchlist CRUD (add, update, delete, list)
+- 🎯 Watchlist status tracking: `PLANNED`, `WATCHING`, `COMPLETED`, `DROPED`
+- ⭐ Movie ratings (1–10) and personal notes per watchlist entry
+- 📄 Pagination with `nextURL` / `prevURL` absolute URL helpers
+- 🔒 Password hashing with bcryptjs (salt rounds: 10)
+- 🛡️ Protected watchlist routes via JWT auth middleware
+- 🌱 Database seed script with 10 Quentin Tarantino films as sample data
+
 
 ---
 
 ## 🛠️ Tech Stack
 
-| Layer | Technology |
-|---|---|
-| Runtime | Node.js (ES Modules) |
-| Framework | Express.js v5 |
-| ORM | Prisma v7 |
-| Database | PostgreSQL |
-| Auth | JWT (jsonwebtoken) + bcryptjs |
-| Validation | Zod v4 |
-| Dev Tools | Nodemon |
-| Environment | dotenv |
+| Layer | Technology | Version |
+|---|---|---|
+| Runtime | Node.js (ES Modules) | ≥ 20.19 |
+| Framework | Express.js | v5.2.1 |
+| ORM | Prisma | v7.5.0 |
+| Database | PostgreSQL | any recent |
+| Auth | jsonwebtoken + bcryptjs | 9.0.3 / 3.0.3 |
+| Validation | Zod | v4.3.6 |
+| Rate Limiting | express-rate-limit | v8.3.1 |
+| Dev Server | Nodemon | v3.1.14 |
+| Environment | dotenv | v17.3.1 |
 
 ---
 
@@ -73,42 +75,48 @@ This API allows users to browse a movie catalog, register accounts, and manage p
 Movies-management-backend-APIs/
 │
 ├── prisma/
-│   ├── schema.prisma             # Database models (User, Movie, Watchlist)
-│   ├── prisma.config.ts          # Prisma configuration
-│   ├── movieSeed.js              # Seed script with 10 sample movies
-│   └── migrations/               # SQL migration history
-│       ├── 20260323153053_users/
-│       └── 20260323161155_all_tables/
+│   ├── schema.prisma                     # DB models: User, Movie, Watchlist
+│   ├── prisma.config.ts                  # Prisma config (schema path, migrations path, DB URL)
+│   ├── movieSeed.js                      # Seed: 10 Tarantino films
+│   └── migrations/
+│       ├── 20260323153053_users/         # Migration 1: User table
+│       │   └── migration.sql
+│       └── 20260323161155_all_tables/    # Migration 2: Movie, Watchlist, enum, constraints
+│           └── migration.sql
 │
 ├── src/
 │   ├── config/
-│   │   └── db.js                 # Prisma client setup & connect/disconnect helpers
+│   │   └── db.js                         # Prisma client + connectDB / disconnectDB
 │   │
 │   ├── controllers/
-│   │   ├── authController.js     # register, login, logout
-│   │   ├── movieController.js    # getMovies (with filtering & pagination)
-│   │   └── watchlistController.js # CRUD for watchlist items
+│   │   ├── authController.js             # register, login, logout
+│   │   ├── movieController.js            # getMovies (filter, sort, paginate)
+│   │   └── watchlistController.js        # getWatchlist, addToWatchlist, updateWL, deleteWLItem
 │   │
 │   ├── middleware/
-│   │   ├── authMiddleware.js     # JWT verification (cookie + Bearer)
-│   │   └── validatorsMiddleware.js # Zod body & query validators
+│   │   ├── authMiddleware.js             # JWT verify (Bearer + cookie)
+│   │   ├── rateLimiting.js               # authLimiter, movieLimiter, watchlistLimiter
+│   │   └── validatorsMiddleware.js       # validateReq (body) + validateQueryReq (query)
 │   │
 │   ├── routes/
-│   │   ├── authRoutes.js         # /auth/*
-│   │   ├── movieRoutes.js        # /movies/*
-│   │   └── watchlistRouter.js    # /watchlist/* (all protected)
+│   │   ├── authRoutes.js                 # POST /auth/register|login|logout
+│   │   ├── movieRoutes.js                # GET /movies
+│   │   └── watchlistRouter.js            # CRUD /watchlist
 │   │
 │   ├── utils/
-│   │   ├── buildURL.js           # Pagination URL builder
-│   │   └── genToken.js           # JWT sign + set cookie
+│   │   ├── buildURL.js                   # Builds absolute pagination URLs
+│   │   └── genToken.js                   # Signs JWT + sets httpOnly cookie
 │   │
 │   ├── validators/
-│   │   └── watchlistValidators.js # Zod schemas for watchlist add/update
+│   │   ├── userValidators.js             # addUserSchema, loginSchema
+│   │   ├── movieValidators.js            # getMoviesSchema
+│   │   └── watchlistValidators.js        # addTOWLSchema, updateWLSchema
 │   │
-│   └── server.js                 # App entry point
+│   └── server.js                         # App entry: middleware, routes, server, shutdown
 │
 ├── .gitignore
 ├── package.json
+├── prisma.config.ts
 └── README.md
 ```
 
@@ -117,42 +125,45 @@ Movies-management-backend-APIs/
 ## 🗄️ Database Schema
 
 ### User
+
 | Field | Type | Notes |
 |---|---|---|
-| id | String (UUID) | Primary key, auto-generated |
-| email | String | Unique |
-| name | String | Required |
-| password | String | Hashed with bcryptjs |
-| createdAt | DateTime | Auto-set on creation |
+| `id` | String (UUID) | Primary key, auto-generated |
+| `email` | String | Unique |
+| `name` | String | Required |
+| `password` | String | bcryptjs hashed, never returned in responses |
+| `createdAt` | DateTime | Auto-set on creation |
 
 ### Movie
+
 | Field | Type | Notes |
 |---|---|---|
-| id | String (UUID) | Primary key, auto-generated |
-| title | String | Required |
-| overview | String? | Optional description |
-| realeseYear | Int | Required |
-| genre | String[] | Array of genre tags |
-| runtime | Int? | Duration in minutes |
-| posterURL | String? | Optional image URL |
-| createdBy | String | FK → User.id (cascades on delete) |
-| createdAt | DateTime | Auto-set on creation |
+| `id` | String (UUID) | Primary key, auto-generated |
+| `title` | String | Required |
+| `overview` | String? | Optional description |
+| `realeseYear` | Int | Required (note: intentional typo, frozen in migrations) |
+| `genre` | String[] | Array of genre tag strings |
+| `runtime` | Int? | Duration in minutes, optional |
+| `posterURL` | String? | Image URL, optional |
+| `createdBy` | String | FK → User.id, cascade delete |
+| `createdAt` | DateTime | Auto-set on creation |
 
 ### Watchlist
+
 | Field | Type | Notes |
 |---|---|---|
-| id | String (UUID) | Primary key, auto-generated |
-| userID | String | FK → User.id (cascade delete) |
-| movieID | String | FK → Movie.id (cascade delete) |
-| status | WatchlistStatus | Default: `PLANNED` |
-| rating | Int? | 1–10, optional |
-| notes | String? | Personal notes, optional |
-| createdAt | DateTime | Auto-set |
-| updatedAt | DateTime | Updated on change |
+| `id` | String (UUID) | Primary key, auto-generated |
+| `userID` | String | FK → User.id, cascade delete |
+| `movieID` | String | FK → Movie.id, cascade delete |
+| `status` | WatchlistStatus | Default: `PLANNED` |
+| `rating` | Int? | 1–10, optional |
+| `notes` | String? | Personal notes, optional |
+| `createdAt` | DateTime | Auto-set |
+| `updatedAt` | DateTime | Manually set to `new Date()` on update |
 
 **WatchlistStatus enum:** `PLANNED` | `WATCHING` | `COMPLETED` | `DROPED`
 
-> **Unique constraint:** `(movieID, userID)` — each user can only add a movie once.
+> **Unique constraint:** `@@unique([movieID, userID])` — a user can only add each movie once.
 
 ---
 
@@ -160,8 +171,8 @@ Movies-management-backend-APIs/
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) v20.19 or higher (required by Prisma v7)
-- [PostgreSQL](https://www.postgresql.org/) 
+- [Node.js](https://nodejs.org/) **v20.19 or higher** (Prisma v7 requirement)
+- [PostgreSQL](https://www.postgresql.org/)
 - [npm](https://www.npmjs.com/)
 - [Git](https://git-scm.com/)
 
@@ -169,14 +180,14 @@ Movies-management-backend-APIs/
 
 ### Installation
 
-1. **Clone the repository:**
+**1. Clone the repository:**
 
 ```bash
 git clone https://github.com/Efraym2fero/Movies-management-backend-APIs.git
 cd Movies-management-backend-APIs
 ```
 
-2. **Install dependencies:**
+**2. Install dependencies:**
 
 ```bash
 npm install
@@ -190,62 +201,70 @@ Create a `.env` file in the root directory:
 
 ```env
 DATABASE_URL=postgresql://USER:PASSWORD@HOST:PORT/DATABASE
-JWT_SECRET=your_super_secret_jwt_key
+JWT_SECRET=your_super_secret_jwt_key_here
 JWT_EXP_IN=2d
 NODE_ENV=development
 ```
 
-| Variable | Description |
-|---|---|
-| `DATABASE_URL` | Full PostgreSQL connection string |
-| `JWT_SECRET` | Secret key used to sign and verify JWTs |
-| `JWT_EXP_IN` | Token expiry duration (default: `2d`) |
-| `NODE_ENV` | Set to `production` to enable `Secure` flag on cookies |
+| Variable | Required | Description |
+|---|---|---|
+| `DATABASE_URL` | ✅ | Full PostgreSQL connection string |
+| `JWT_SECRET` | ✅ | Secret key used to sign and verify JWTs |
+| `JWT_EXP_IN` | ❌ | Token expiry duration, defaults to `2d` |
+| `NODE_ENV` | ❌ | Set to `production` to enable `Secure` flag on cookies |
 
 ---
 
 ### Database Setup
 
-Apply the Prisma migrations to create the tables:
+**Run migrations** to create all tables, enums, and constraints:
 
 ```bash
 npx prisma migrate 
 ```
 
-To generate the Prisma client after schema changes:
+**Generate the Prisma client** (required after any schema change):
 
 ```bash
 npx prisma generate
 ```
 
----
 
-### Seeding the Database
-
-The project includes a seed script that inserts 10 Christopher Nolan films as sample data.
-
-> **Note:** Before seeding, update the `creatorID` constant in `prisma/movieSeed.js` to a valid existing user's UUID in your database.
-
-```bash
-npm run seed:movie
-```
-
----
 
 ### Running the Server
 
-**Development mode** (with auto-restart via Nodemon):
+**Development mode** (auto-restart on file changes via Nodemon):
 
 ```bash
 npm run dev
 ```
 
-The server starts at: `http://localhost:3000`
+Server starts at: **`http://localhost:3000`**
 
-Health check:
+**Health check:**
 ```
 GET http://localhost:3000/
 → { "message": "hello world" }
+```
+
+---
+
+## 🛡️ Rate Limiting
+
+Rate limiting is applied per route group via `express-rate-limit`. All limits use standard `RateLimit-*` response headers.
+
+| Route Group | Window | Max Requests | Middleware |
+|---|---|---|---|
+| `/auth/*` | 1 minute | 5 | `authLimiter` |
+| `/movies/*` | 1 hour | 1000 | `movieLimiter` |
+| `/watchlist/*` | 1 hour | 500 | `watchlistLimiter` |
+
+When a limit is exceeded, the API returns:
+
+```json
+{
+  "error": "Too many requests, please try again later."
+}
 ```
 
 ---
@@ -254,24 +273,39 @@ GET http://localhost:3000/
 
 ### Auth Routes
 
-Base path: `/auth`
+Base path: `/auth`  
+Rate limit: **5 requests / minute**
 
-| Method | Endpoint | Description | Auth Required |
-|---|---|---|---|
-| POST | `/auth/register` | Register a new user | ❌ |
-| POST | `/auth/login` | Login and receive JWT | ❌ |
-| POST | `/auth/logout` | Logout (clears JWT cookie) | ❌ |
+| Method | Endpoint | Description | Auth | Validated |
+|---|---|---|---|---|
+| POST | `/auth/register` | Register a new user | ❌ | ✅ |
+| POST | `/auth/login` | Login and receive JWT | ❌ | ✅ |
+| POST | `/auth/logout` | Logout and clear cookie | ❌ | ❌ |
 
-**Register — Request Body:**
+---
+
+#### `POST /auth/register`
+
+**Request Body:**
+
 ```json
 {
   "name": "messi",
   "email": "messi@example.com",
-  "password": "Password123"
+  "password": "pass123"
 }
 ```
 
-**Register / Login — Success Response:**
+**Validation rules:**
+
+| Field | Rule |
+|---|---|
+| `name` | String, minimum 3 characters |
+| `email` | Valid email format |
+| `password` | String, 4–15 characters |
+
+**Success Response — `201 Created`:**
+
 ```json
 {
   "status": "created",
@@ -286,9 +320,50 @@ Base path: `/auth`
 }
 ```
 
-> The JWT is also set automatically as an `httpOnly` cookie named `jwt`. You can use either the cookie or the Bearer token for protected routes.
+> The JWT is also set as an `httpOnly` cookie named `jwt`.
 
-**Logout — Response:**
+---
+
+#### `POST /auth/login`
+
+**Request Body:**
+
+```json
+{
+  "email": "messi@example.com",
+  "password": "pass123"
+}
+```
+
+**Success Response — `200 OK`:**
+
+```json
+{
+  "data": {
+    "user": {
+      "id": "5ea54d27-3905-416f-bef1-f04fc52c790c",
+      "name": "messi",
+      "email": "messi@example.com"
+    },
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  }
+}
+```
+
+**Error — `400 Bad Request`** (wrong credentials):
+
+```json
+{ "message": "invalid email or password" }
+```
+
+---
+
+#### `POST /auth/logout`
+
+No body required. Clears the `jwt` cookie by setting it to an empty string with an expired date.
+
+**Success Response — `200 OK`:**
+
 ```json
 {
   "status": "success",
@@ -300,42 +375,49 @@ Base path: `/auth`
 
 ### Movie Routes
 
-Base path: `/movies`
+Base path: `/movies`  
+Rate limit: **1000 requests / hour**
 
-| Method | Endpoint | Description | Auth Required |
-|---|---|---|---|
-| GET | `/movies` | Get all movies (paginated, filterable) | ❌ |
+| Method | Endpoint | Description | Auth | Validated |
+|---|---|---|---|---|
+| GET | `/movies` | List movies (filterable, sortable, paginated) | ❌ | ✅ |
+
+---
+
+#### `GET /movies`
 
 **Query Parameters:**
 
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `page` | number | `1` | Page number |
-| `limit` | number | `5` | Results per page |
-| `genre` | string | — | Filter by a single genre (e.g. `Action`) |
-| `year` | number | — | Filter by exact release year |
-| `search` | string | — | Case-insensitive title search |
-| `sortBy` | string | `realeseYear` | Sort field: `realeseYear`, `title`, `runtime`, or `genre` |
-| `order` | string | `desc` | Sort direction: `asc` or `desc` |
+| Parameter | Type | Default | Validation | Description |
+|---|---|---|---|---|
+| `page` | number | `1` | ≥ 1 | Page number |
+| `limit` | number | `5` | ≥ 1 | Results per page |
+| `genre` | string | — | min 4 chars | Filter by genre (e.g. `Action`) |
+| `year` | number | — | ≥ 1900 | Filter by exact release year |
+| `search` | string | — | any string | Case-insensitive title search |
+| `sortBy` | string | `realeseYear` | enum | One of: `realeseYear`, `genre`, `title`, `runtime` |
+| `order` | string | `desc` | enum | `asc` or `desc` |
 
-**Example:**
+**Example Request:**
+
 ```
-GET /movies?page=1&limit=5&genre=Action&sortBy=realeseYear&order=desc
+GET /movies?page=1&limit=3&genre=Crime&sortBy=realeseYear&order=asc
 ```
 
-**Response:**
+**Success Response — `200 OK`:**
+
 ```json
 {
   "data": {
     "movies": [
       {
-        "id": "uuid",
-        "title": "Inception",
-        "overview": "A skilled thief leads a team into people's dreams...",
-        "realeseYear": 2010,
-        "genre": ["Sci-Fi", "Action", "Thriller"],
-        "runtime": 148,
-        "posterURL": null,
+        "id": "abc-uuid",
+        "title": "Reservoir Dogs",
+        "overview": "After a failed heist, criminals suspect one of them is a police informant.",
+        "realeseYear": 1992,
+        "genre": ["Crime", "Thriller"],
+        "runtime": 99,
+        "posterURL": "https://example.com/reservoirdogs.jpg",
         "createdBy": "user-uuid",
         "createdAt": "2026-03-23T16:11:55.000Z"
       }
@@ -344,9 +426,9 @@ GET /movies?page=1&limit=5&genre=Action&sortBy=realeseYear&order=desc
   "pagination": {
     "totalMovies": 10,
     "page": 1,
-    "limit": 5,
-    "totalPages": 2,
-    "nextURL": "http://localhost:3000/movies?page=2&limit=5",
+    "limit": 3,
+    "totalPages": 4,
+    "nextURL": "http://localhost:3000/movies?page=2&limit=3",
     "prevURL": null
   }
 }
@@ -356,123 +438,267 @@ GET /movies?page=1&limit=5&genre=Action&sortBy=realeseYear&order=desc
 
 ### Watchlist Routes
 
-Base path: `/watchlist`
+Base path: `/watchlist`  
+Rate limit: **500 requests / hour**  
 
-> **All watchlist routes require authentication** via Bearer token or `jwt` cookie.
+> **All watchlist routes require authentication** — include a Bearer token or the `jwt` cookie.
 
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/watchlist` | Get the authenticated user's watchlist |
-| POST | `/watchlist` | Add a movie to the watchlist |
-| PUT | `/watchlist/:id` | Update a watchlist entry |
-| DELETE | `/watchlist/:id` | Remove a movie from the watchlist |
+| Method | Endpoint | Description | Auth | Validated |
+|---|---|---|---|---|
+| GET | `/watchlist` | Get authenticated user's watchlist | ✅ | ✅ (query) |
+| POST | `/watchlist` | Add a movie to the watchlist | ✅ | ✅ (body) |
+| PUT | `/watchlist/:id` | Update a watchlist entry | ✅ | ✅ (body) |
+| DELETE | `/watchlist/:id` | Remove a movie from the watchlist | ✅ | ❌ |
 
-**Query Parameters for `GET /watchlist`:**
+---
 
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `page` | number | `1` | Page number |
-| `limit` | number | `5` | Results per page |
-| `status` | string | — | Filter: `PLANNED`, `WATCHING`, `COMPLETED`, `DROPED` |
-| `rating` | number | — | Filter by exact rating (1–10) |
-| `sortBy` | string | `rating` | Sort by: `rating` or `status` |
-| `order` | string | `desc` | `asc` or `desc` |
+#### `GET /watchlist`
 
-**Add to Watchlist — Request Body:**
+**Query Parameters:**
+
+| Parameter | Type | Default | Validation | Description |
+|---|---|---|---|---|
+| `page` | number | `1` | ≥ 1 | Page number |
+| `limit` | number | `5` | ≥ 1 | Results per page |
+| `status` | string | — | enum | Filter by `PLANNED`, `WATCHING`, `COMPLETED`, or `DROPED` |
+| `rating` | number | — | 1–10 | Filter by exact rating |
+| `sortBy` | string | `rating` | enum | Sort by: `rating` or `status` |
+| `order` | string | `desc` | enum | `asc` or `desc` |
+
+**Success Response — `200 OK`:**
+
+```json
+{
+  "data": {
+    "watchlist": [
+      {
+        "id": "wl-uuid",
+        "userID": "user-uuid",
+        "movieID": "movie-uuid",
+        "status": "WATCHING",
+        "rating": 9,
+        "notes": "Brilliant cinematography.",
+        "createdAt": "2026-03-24T10:00:00.000Z",
+        "updatedAt": "2026-03-25T08:30:00.000Z",
+        "movie": {
+          "id": "movie-uuid",
+          "title": "Pulp Fiction",
+          "realeseYear": 1994,
+          "genre": ["Crime", "Drama"],
+          "runtime": 154,
+          "posterURL": "https://example.com/pulpfiction.jpg"
+        }
+      }
+    ]
+  },
+  "pagination": {
+    "totalwatchlists": 7,
+    "totalPages": 2,
+    "page": 1,
+    "limit": 5,
+    "nextPage": "http://localhost:3000/watchlist?page=2&limit=5",
+    "prevPage": null
+  }
+}
+```
+
+> Note: The watchlist response includes the full `movie` object (via Prisma `include`).
+
+---
+
+#### `POST /watchlist`
+
+Adds a movie to the authenticated user's watchlist.
+
+**Request Body:**
+
 ```json
 {
   "movieID": "valid-movie-uuid",
   "status": "PLANNED",
   "rating": 8,
-  "notes": "Looking forward to this one!"
+  "notes": "Been meaning to watch this for ages."
 }
 ```
 
-| Field | Required | Validation |
+**Validation Rules:**
+
+| Field | Required | Rule |
 |---|---|---|
-| `movieID` | ✅ | Must be a valid UUID of an existing movie |
+| `movieID` | ✅ | Valid UUID — must match an existing movie |
 | `status` | ❌ | One of: `PLANNED`, `WATCHING`, `COMPLETED`, `DROPED` |
 | `rating` | ❌ | Integer between 1 and 10 |
 | `notes` | ❌ | Any string |
 
-**Update Watchlist Item — Request Body:**
+**Error — `400`** if movie is already in the watchlist:
+
+```json
+{ "error": "movie already in the watchlist" }
+```
+
+**Error — `404`** if movie ID does not exist:
+
+```json
+{ "error": "movie not found" }
+```
+
+**Success Response — `200 OK`:**
+
+```json
+{
+  "status": "success",
+  "data": {
+    "watchlist": {
+      "id": "wl-uuid",
+      "userID": "user-uuid",
+      "movieID": "movie-uuid",
+      "status": "PLANNED",
+      "rating": 8,
+      "notes": "Been meaning to watch this for ages.",
+      "createdAt": "2026-03-26T12:00:00.000Z",
+      "updatedAt": "2026-03-26T12:00:00.000Z"
+    }
+  }
+}
+```
+
+---
+
+#### `PUT /watchlist/:id`
+
+Updates an existing watchlist entry. All fields are optional — only provided fields are changed. `updatedAt` is automatically set to the current timestamp.
+
+**Request Body:**
+
 ```json
 {
   "status": "COMPLETED",
-  "rating": 9,
-  "notes": "One of the best films I've ever seen."
+  "rating": 10,
+  "notes": "A masterpiece."
 }
 ```
 
-All fields are optional — only provided fields are updated. `updatedAt` is set automatically.
+**Success Response — `200 OK`:**
 
-**Delete Response:**
 ```json
 {
-  "status": "deleted successfully"
+  "data": {
+    "updatedItem": {
+      "id": "wl-uuid",
+      "status": "COMPLETED",
+      "rating": 10,
+      "notes": "A masterpiece.",
+      "updatedAt": "2026-03-26T13:00:00.000Z"
+    }
+  }
 }
 ```
 
-> Only the owner of a watchlist entry can delete it. Attempts by other users return `403 Forbidden`.
+---
+
+#### `DELETE /watchlist/:id`
+
+Removes a movie from the authenticated user's watchlist.
+
+> Only the owner of the entry can delete it. If another user attempts to delete it, a `403 Forbidden` is returned.
+
+**Success Response — `200 OK`:**
+
+```json
+{ "status": "deleted successfully" }
+```
+
+**Error — `403 Forbidden`:**
+
+```json
+{ "error": "You are not allowed to delete" }
+```
+
+**Error — `404 Not Found`:**
+
+```json
+{ "error": "movie not found in the watchlist" }
+```
 
 ---
 
 ## 🔐 Authentication
 
-Two methods are supported simultaneously:
+The API supports **two authentication methods simultaneously**:
 
-**1. Authorization Header:**
+**1. Authorization Header (Bearer token):**
 ```
 Authorization: Bearer <your_jwt_token>
 ```
 
-**2. HTTP Cookie:**
-The token is automatically stored in an `httpOnly` cookie named `jwt` on login/register and cleared on logout. This works natively in browsers.
+**2. HTTP Cookie (automatic):**
+On login or register, the token is automatically stored in a cookie named `jwt` with these attributes:
+- `httpOnly: true` — not accessible via JavaScript
+- `Secure: true` — only sent over HTTPS (when `NODE_ENV=production`)
+- `SameSite: strict` — prevents CSRF
+- `maxAge` — 2 days
 
-Token expiry is controlled by the `JWT_EXP_IN` environment variable (default: `2d`). In production, cookies are marked `Secure` and `SameSite: Strict`.
+On logout, the cookie is cleared by setting it to an empty value with an expired date.
+
+**Token expiry** is set by the `JWT_EXP_IN` environment variable (default: `2d`).
+
+The `authMiddleware` first checks the `Authorization` header, then falls back to the cookie. If neither is present, or if the token is invalid or the user no longer exists in the database, a `401` is returned.
 
 ---
 
 ## ✅ Validation
 
-All request bodies and query strings are validated using **Zod v4** schemas, applied through two reusable middlewares:
+All input is validated using **Zod v4** schemas before reaching the controller. Two reusable middleware functions handle this:
 
-- `validateReq(schema)` — validates `req.body`
-- `validateQueryReq(schema)` — validates `req.query`
+| Middleware | Validates | Applied to |
+|---|---|---|
+| `validateReq(schema)` | `req.body` | `POST /auth/register`, `POST /auth/login`, `POST /watchlist`, `PUT /watchlist/:id` |
+| `validateQueryReq(schema)` | `req.query` | `GET /movies`, `GET /watchlist` |
 
-On validation failure:
+**Validator Schemas:**
+
+| File | Schemas |
+|---|---|
+| `userValidators.js` | `addUserSchema` (name, email, password), `loginSchema` (email, password) |
+| `movieValidators.js` | `getMoviesSchema` (page, limit, genre, year, search, sortBy, order) |
+| `watchlistValidators.js` | `addTOWLSchema` (movieID, status, rating, notes), `updateWLSchema` (status, rating, notes) |
+
+**Validation Failure Response — `400 Bad Request`:**
+
 ```json
 {
-  "message": "movieID: Invalid uuid, rating: Enter num between 1 to 10"
+  "message": "email: The email not correct, password: You should enter password from 4 to 15 char"
 }
 ```
+
+Errors from all failing fields are joined into a single human-readable string.
 
 ---
 
 ## ⚠️ Error Handling
 
-All endpoints return structured JSON errors:
+All endpoints return structured JSON error responses:
 
 | Status Code | Meaning |
 |---|---|
-| 200 | OK |
-| 201 | Created |
-| 400 | Bad request / duplicate entry / validation error |
-| 401 | Unauthorized — missing or invalid JWT |
-| 403 | Forbidden — resource belongs to another user |
-| 404 | Resource not found |
-| 500 | Internal server error |
+| `200` | OK |
+| `201` | Resource created |
+| `400` | Bad request — validation failure, duplicate entry, wrong credentials |
+| `401` | Unauthorized — missing, invalid, or expired JWT |
+| `403` | Forbidden — authenticated but not the resource owner |
+| `404` | Resource not found |
+| `429` | Too Many Requests — rate limit exceeded |
+| `500` | Internal server error |
 
-The server handles process-level errors gracefully:
+**Process-level error handling** in `server.js`:
 
 ```
-unhandledRejection  → closes server, disconnects DB, exits
-uncaughtException   → disconnects DB, exits
-SIGTERM             → graceful shutdown
+unhandledRejection  → server.close() → disconnectDB() → process.exit(1)
+uncaughtException   → disconnectDB() → process.exit(1)
+SIGTERM             → server.close() → disconnectDB() → process.exit(0)
 ```
 
----
-
+The `server` variable is correctly assigned via `const server = app.listen(...)` so all three shutdown handlers can call `server.close()` safely.
 
 
 > Built by [Efraym2fero](https://github.com/Efraym2fero)

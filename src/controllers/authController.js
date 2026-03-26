@@ -68,8 +68,8 @@ const login = async (req,res)=>{
         {
           user:{
             id:user.id,
-            email,
-            password
+            name:user.name,
+            email
           },
           token
         }

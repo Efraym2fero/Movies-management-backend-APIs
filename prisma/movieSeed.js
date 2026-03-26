@@ -8,87 +8,97 @@ const adapter = new PrismaPg({
 });
 const prisma = new PrismaClient({adapter});
 
-const creatorID = "5ea54d27-3905-416f-bef1-f04fc52c790c"
+const creatorID = "50c9b947-51eb-4617-831a-68fe082ee859"
 
 const movies = [
   {
-    "title": "Inception",
-    "overview": "A skilled thief leads a team into people's dreams to steal and plant ideas.",
-    "realeseYear": 2010,
-    "genre": ["Sci-Fi", "Action", "Thriller"],
-    "runtime": 148,
+    "title": "Pulp Fiction",
+    "overview": "Interwoven stories of crime, redemption, and dark humor in Los Angeles.",
+    "realeseYear": 1994,
+    "genre": ["Crime", "Drama"],
+    "runtime": 154,
+    "posterURL": "https://example.com/pulpfiction.jpg",
     "createdBy": creatorID
   },
   {
-    "title": "Interstellar",
-    "overview": "A team travels through a wormhole in space to ensure humanity's survival.",
-    "realeseYear": 2014,
-    "genre": ["Sci-Fi", "Drama", "Adventure"],
-    "runtime": 169,
+    "title": "Reservoir Dogs",
+    "overview": "After a failed heist, criminals suspect one of them is a police informant.",
+    "realeseYear": 1992,
+    "genre": ["Crime", "Thriller"],
+    "runtime": 99,
+    "posterURL": "https://example.com/reservoirdogs.jpg",
     "createdBy": creatorID
   },
   {
-    "title": "The Dark Knight",
-    "overview": "Batman faces the Joker, a criminal mastermind who plunges Gotham into chaos.",
-    "realeseYear": 2008,
-    "genre": ["Action", "Crime", "Drama"],
-    "runtime": 152,
+    "title": "Kill Bill: Vol. 1",
+    "overview": "A former assassin seeks revenge against her ex-colleagues who betrayed her.",
+    "realeseYear": 2003,
+    "genre": ["Action", "Crime"],
+    "runtime": 111,
+    "posterURL": "https://example.com/killbill1.jpg",
     "createdBy": creatorID
   },
   {
-    "title": "Batman Begins",
-    "overview": "Bruce Wayne begins his journey to become Batman and fight crime in Gotham.",
-    "realeseYear": 2005,
-    "genre": ["Action", "Adventure"],
-    "runtime": 140,
-    "createdBy": creatorID
-  },
-  {
-    "title": "The Dark Knight Rises",
-    "overview": "Batman returns to face Bane and save Gotham City from destruction.",
-    "realeseYear": 2012,
+    "title": "Kill Bill: Vol. 2",
+    "overview": "The Bride continues her revenge quest, confronting the remaining targets.",
+    "realeseYear": 2004,
     "genre": ["Action", "Drama"],
-    "runtime": 164,
+    "runtime": 136,
+    "posterURL": "https://example.com/killbill2.jpg",
     "createdBy": creatorID
   },
   {
-    "title": "Dunkirk",
-    "overview": "Allied soldiers are evacuated during WWII from the beaches of Dunkirk.",
-    "realeseYear": 2017,
-    "genre": ["War", "Drama", "History"],
-    "runtime": 106,
+    "title": "Inglourious Basterds",
+    "overview": "A group of Jewish soldiers plots to assassinate Nazi leaders during WWII.",
+    "realeseYear": 2009,
+    "genre": ["War", "Drama"],
+    "runtime": 153,
+    "posterURL": "https://example.com/inglouriousbasterds.jpg",
     "createdBy": creatorID
   },
   {
-    "title": "Tenet",
-    "overview": "An agent manipulates time to prevent World War III.",
-    "realeseYear": 2020,
-    "genre": ["Sci-Fi", "Action"],
-    "runtime": 150,
+    "title": "Django Unchained",
+    "overview": "A freed slave teams up with a bounty hunter to rescue his wife.",
+    "realeseYear": 2012,
+    "genre": ["Western", "Drama"],
+    "runtime": 165,
+    "posterURL": "https://example.com/django.jpg",
     "createdBy": creatorID
   },
   {
-    "title": "Memento",
-    "overview": "A man with short-term memory loss tries to find his wife's killer.",
-    "realeseYear": 2000,
-    "genre": ["Mystery", "Thriller"],
+    "title": "The Hateful Eight",
+    "overview": "Strangers seek shelter during a blizzard but tensions escalate into violence.",
+    "realeseYear": 2015,
+    "genre": ["Western", "Mystery"],
+    "runtime": 168,
+    "posterURL": "https://example.com/hateful8.jpg",
+    "createdBy": creatorID
+  },
+  {
+    "title": "Once Upon a Time in Hollywood",
+    "overview": "A fading actor and his stunt double navigate Hollywood's changing landscape.",
+    "realeseYear": 2019,
+    "genre": ["Drama", "Comedy"],
+    "runtime": 161,
+    "posterURL": "https://example.com/oncehollywood.jpg",
+    "createdBy": creatorID
+  },
+  {
+    "title": "Jackie Brown",
+    "overview": "A flight attendant becomes entangled in a dangerous money smuggling scheme.",
+    "realeseYear": 1997,
+    "genre": ["Crime", "Drama"],
+    "runtime": 154,
+    "posterURL": "https://example.com/jackiebrown.jpg",
+    "createdBy": creatorID
+  },
+  {
+    "title": "Death Proof",
+    "overview": "A stuntman uses his car to stalk and kill unsuspecting women.",
+    "realeseYear": 2007,
+    "genre": ["Thriller", "Action"],
     "runtime": 113,
-    "createdBy": creatorID
-  },
-  {
-    "title": "The Prestige",
-    "overview": "Two magicians engage in a fierce rivalry filled with obsession and deception.",
-    "realeseYear": 2006,
-    "genre": ["Drama", "Mystery", "Sci-Fi"],
-    "runtime": 130,
-    "createdBy": creatorID
-  },
-  {
-    "title": "Oppenheimer",
-    "overview": "The story of J. Robert Oppenheimer and the creation of the atomic bomb.",
-    "realeseYear": 2023,
-    "genre": ["Biography", "Drama", "History"],
-    "runtime": 180,
+    "posterURL": "https://example.com/deathproof.jpg",
     "createdBy": creatorID
   }
 ]

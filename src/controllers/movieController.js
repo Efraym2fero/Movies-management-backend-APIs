@@ -9,7 +9,9 @@ const getMovies = async(req,res)=>{
             limit = 5,
             genre,
             year,
-            search
+            search,
+            sortBy = "realeseYear",
+            order = "desc"
         } = req.query
 
         
@@ -30,20 +32,28 @@ const getMovies = async(req,res)=>{
                 mode:"insensitive"
             }
         }
+
+        const allowedFields = ["realeseYear","genre","title","runtime"]
+        const sortField = allowedFields.includes(sortBy) ? sortBy: "realeseYear"
+        const sortOrder = order === "desc" ?"desc" : "asc" 
+
         const take = parseInt(limit)
         const skip = (parseInt(page) - 1) * take
 
         const movies = await prisma.movie.findMany({
             where,
             skip,
-            take
+            take,
+            orderBy:{
+                [sortField]:sortOrder
+            }
         })
         
         if (!movies){
             return res.status(404).json({error:"movies not found"})
         }
         
-        const totalMovies = await prisma.movie.count()
+        const totalMovies = await prisma.movie.count({where})
         const totalPages = Math.ceil(totalMovies/take)
         const curPage = parseInt(page)
 
@@ -73,6 +83,9 @@ const getMovies = async(req,res)=>{
         return res.status(500).json({error:"failed"})
     }
 }
+
+
+
 
 
 export {getMovies};

@@ -1,15 +1,79 @@
 import { prisma} from "../config/db.js";
+import { buildUrl } from "../utils/buildURL.js";
 
 const getWatchlist = async(req,res)=>{
     try {
-        const watchlist = await prisma.watchlist.findMany({where:{
-            userID:req.user.id
-        }})
+        
+        const {
+            page = 1,
+            limit = 5,
+            status,
+            rating,
+            order = "desc",
+            sortBy = "rating"
+        }=req.query
+
+        const curPage = parseInt(page)
+        const take = parseInt(limit)
+        const skip = (curPage - 1) * take
+
+        const allowedFields = ["rating","status"]
+        const sortFields = allowedFields.includes(sortBy)?sortBy:"rating"
+        const sortOrder = order === "desc" ? "desc":"asc" 
+
+        const where = {userID:req.user.id}
+
+        if (status){
+            where.status = status
+        }
+
+        if (rating){
+            where.rating = parseInt(rating)
+        }
+
+        
+
+        const watchlist = await prisma.watchlist.findMany({
+            where,
+            skip,
+            take,
+            orderBy:{
+                [sortFields]:sortOrder
+            },
+            include:{movie:true}
+        })
 
         if (!watchlist){
             return res.status(404).json({error:"watchlist not found"})
         }
-        res.status(200).json({data:{watchlist}})       
+
+
+        const totalwatchlists = await prisma.watchlist.count({where})
+        const totalPages = Math.ceil(totalwatchlists/take)
+
+        let nextPage = null
+        let prevPage = null
+
+        if(totalPages > curPage){
+            nextPage = buildUrl(req,curPage+1,take)
+        }
+
+        if(curPage>1){
+            prevPage = buildUrl(req,curPage-1,take)
+        }
+        
+        res.status(200).json({
+            data: {watchlist},
+            pagination:{
+                totalwatchlists,
+                totalPages,
+                page:curPage,
+                limit:take,
+                nextPage,
+                prevPage
+            }
+
+        })       
     } catch (error) {
         return res.status(500).json({error:"faild to get"})
     }
